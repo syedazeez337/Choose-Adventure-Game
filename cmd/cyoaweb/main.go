@@ -2,14 +2,15 @@ package main
 
 import (
 	"cyoa"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 )
 
 func main() {
+	port := flag.Int("port", 3000, "The powrt to start the CYOA web application on")
 	filename := flag.String("file", "gopher.json", "the JSON file with cyoa game")
 	flag.Parse()
 	fmt.Println(*filename)
@@ -21,11 +22,12 @@ func main() {
 	}
 
 	// decode the json file
-	d := json.NewDecoder(f)
-	var story cyoa.Story
-	if err := d.Decode(&story); err != nil {
+	story, err := cyoa.JsonStory(f)
+	if err != nil {
 		log.Println(err)
 	}
 
-	fmt.Printf("%+v\n", story)
+	h := cyoa.NewHandler(story)
+	fmt.Printf("Starting the server at: %d\n", *port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 }
