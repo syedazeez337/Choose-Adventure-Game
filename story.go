@@ -22,6 +22,8 @@ type Option struct {
 	Chapter string `json:"arc"`
 }
 
+type HandlerOption func(h *handler)
+
 var tpl *template.Template
 
 var defaultHandlerTmpl = `
@@ -104,12 +106,17 @@ func JsonStory(r io.Reader) (Story, error) {
 	return story, nil
 }
 
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	h := handler{s, tpl}
+  for _, opt := range opts {
+    opt(&h)
+  }
+	return h
 }
 
 type handler struct {
 	s Story
+	t *template.Template
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +127,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = path[1:]
 
 	if chapter, ok := h.s[path]; ok {
+    // using template h.t not working
 		err := tpl.Execute(w, chapter)
 		if err != nil {
 			log.Printf("%v", err)
@@ -128,4 +136,10 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "Chapter not found", http.StatusNotFound)
+}
+
+func WithTemplate(t *template.Template) HandlerOption {
+  return func(h *handler) {
+    h.t = t
+  }
 }
